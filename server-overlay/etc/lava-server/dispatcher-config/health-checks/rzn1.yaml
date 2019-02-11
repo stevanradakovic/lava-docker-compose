@@ -1,0 +1,56 @@
+device_type: rzn1
+job_name: rzn1 health check
+
+timeouts:
+  job:
+    minutes: 10
+  action:
+    minutes: 5
+  connection:
+    minutes: 2
+
+priority: medium
+visibility: public
+
+actions:
+- deploy:
+    timeout:
+      minutes: 4
+    to: tftp
+    kernel:
+      url: http://images/schneider/uImage.bin
+      type: uimage
+    nfsrootfs:
+      url: http://images/schneider/rootfs.tar.bz2
+      compression: bz2
+    dtb:
+      url: http://images/schneider/devicetree.dtb
+- boot:
+    method: u-boot
+    commands: nfs
+    auto_login:
+      login_prompt: 'login:'
+      username: root
+    prompts:
+    - 'root@rzn1-snarc:~# '
+    timeout:
+      minutes: 2
+- test:
+    timeout:
+      minutes: 5
+    definitions:
+    - repository:
+        metadata:
+          format: Lava-Test Test Definition 1.0
+          name: smoke-tests-basic
+          description: "Basic system test command for Linaro Ubuntu images"
+        run:
+          steps:
+          - printenv
+      from: inline
+      name: env-dut-inline
+      path: inline/env-dut.yaml
+    - repository: https://git.linaro.org/qa/test-definitions.git
+      from: git
+      path: automated/linux/smoke/smoke.yaml
+      name: smoke-tests

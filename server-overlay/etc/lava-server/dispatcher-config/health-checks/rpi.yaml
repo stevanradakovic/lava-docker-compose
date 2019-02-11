@@ -1,0 +1,56 @@
+device_type: rpi3-b-32
+
+job_name: rpi3-b-32 standard health check
+timeouts:
+  job:
+    minutes: 10
+  action:
+    minutes: 5
+  connection:
+    minutes: 2
+priority: medium
+visibility: public
+
+context:
+  extra_kernel_args: " 8250.nr_uarts=1"
+  extra_nfsroot_args: ",vers=3"
+  console_device: "ttyS0"
+
+actions:
+- deploy:
+    timeout:
+      minutes: 5
+    to: tftp
+    kernel:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/openembedded/mbl/linaro-pyro-pinned/raspberrypi3/31/rpb/uImage-1-4.9.50+git0+46e2d4d1bd-r0-raspberrypi3-20171109202053-31.bin
+      type: uimage
+    modules:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/openembedded/mbl/linaro-pyro-pinned/raspberrypi3/31/rpb/modules-1-4.9.50+git0+46e2d4d1bd-r0-raspberrypi3-20171109202053-31.tgz
+      compression: gz
+    nfsrootfs:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/openembedded/mbl/linaro-pyro-pinned/raspberrypi3/31/rpb/rpb-console-image-raspberrypi3-20171109202053-31.rootfs.tar.xz
+      compression: xz
+    os: debian
+    dtb:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/openembedded/mbl/linaro-pyro-pinned/raspberrypi3/31/rpb/uImage-1-4.9.50+git0+46e2d4d1bd-r0-bcm2710-rpi-3-b-20171109202053-31.dtb
+
+- boot:
+    method: u-boot
+    commands: nfs
+    auto_login:
+      login_prompt: 'login:'
+      username: root
+    prompts:
+    - 'root@raspberrypi3:~#'
+    timeout:
+      minutes: 5
+
+- test:
+    timeout:
+      minutes: 5
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests
+

@@ -28,7 +28,7 @@ services:
 
     container_name: lava_server
     ports:
-      - 80:80
+      - 8080:80
     volumes:
       # Job artifact storage
       - joboutput:/var/lib/lava-server/default/media/job-output
@@ -47,7 +47,11 @@ services:
       - database
 
   dispatcher:
-    image: lavasoftware/amd64-lava-dispatcher:2019.01
+    #image: lavasoftware/amd64-lava-dispatcher:2019.01
+    # Use modified container with SNMP added
+    build:
+      context: ./dispatcher-docker
+
     container_name: lava_dispatcher
     devices:
       - /dev/kvm # needed for QEMU
@@ -61,6 +65,54 @@ services:
     volumes:
       - '/boot:/boot:ro'
       - '/lib/modules:/lib/modules:ro'
+      - '/dev/bus:/dev/bus:ro' # required for USB devices
+      - '/dev/serial:/dev/serial:ro' # required for serial adapters
+      - '/dev/disk:/dev/disk:ro' # required for SDMux
+      - /var/lib/lava/dispatcher/tmp:/var/lib/lava/dispatcher/tmp
+      - worker-http:/var/lib/lava/dispatcher/tmp
+      - worker-tftp:/srv/tftp
+
+  worker-webserver:
+    build:
+      context: ./httpd
+    container_name: worker_httpd
+    ports:
+      - 80:80
+    volumes:
+      - worker-http:/var/lib/lava/dispatcher/tmp
+
+  worker-tftpd:
+    build:
+      context: ./tftpd
+    container_name: worker_tftpd
+    ports:
+        - 69:69/udp
+    volumes:
+      - worker-tftp:/srv/tftp
+
+  ser2net:
+    build:
+      context: ./ser2net
+    container_name: worker_ser2net
+    volumes:
+      - ./ser2net/ser2net.conf:/etc/ser2net.conf
+      - '/dev/serial:/dev/serial' # required for serial adapters
+      - '/dev:/dev'
+    devices:
+      #- /dev/serial/by-id/usb-FTDI_TTL232R-3V3_FT914B60-if00-port0
+      #- /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AL03HJDR-if00-port0
+      - /dev/serial/by-id/usb-FTDI_TTL232R-3V3_FT9PB4QT-if00-port0
+      - /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A907DVD3-if00-port0
+
+#  worker-nfs:
+#    build:
+#      context: ./nfs
+#    container_name: worker_nfs
+#    ports:
+#      - 111:111/udp
+#      - 2049:2049
+#    volumes:
+#      - worker-http:/var/lib/lava/dispatcher/tmp
 
 volumes:
   # postgres data volume
@@ -74,3 +126,9 @@ volumes:
   # lava-server job artifact volume
   joboutput:
     name: lava-server-job-output
+
+  worker-http:
+    name: worker-http
+
+  worker-tftp:
+    name: worker-tftp

@@ -1,4 +1,22 @@
 version: '3.4'
+
+x-common-env: &common_env
+  environment:
+    - LAVA_ADMIN_USER=admin
+    - LAVA_ADMIN_PASSWORD=admin
+    - LAVA_SQUAD_USER=squad-bot
+    - LAVA_SQUAD_PASSWORD=squad-bot
+    - LAVA_SQUAD_TOKEN=d0siRzClNHWNtUYJbpmjOPEyPp0QLCKqQtDGTftN
+    - SQUAD_ADMIN_USER=admin
+    - SQUAD_ADMIN_PASSWORD=admin
+    - SQUAD_CELERY_BROKER_URL=amqp://rabbitmq
+    - XDG_DATA_HOME=/home
+
+x-squad-common-config: &common_squad_config
+  <<: *common_env
+  volumes:
+    - squad-home:/home
+
 services:
 
   database:
@@ -20,6 +38,7 @@ services:
       - 3128:3128
 
   server:
+    <<: *common_env
     #image: lavasoftware/amd64-lava-server:2019.01
     # Use an updated entrypoint; this is necessary to run provision.sh at boot time
     # See https://git.lavasoftware.org/lava/pkg/docker/merge_requests/10
@@ -98,11 +117,11 @@ services:
       - ./ser2net/ser2net.conf:/etc/ser2net.conf
       - '/dev/serial:/dev/serial' # required for serial adapters
       - '/dev:/dev'
-    devices:
+      #devices:
       #- /dev/serial/by-id/usb-FTDI_TTL232R-3V3_FT914B60-if00-port0
       #- /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AL03HJDR-if00-port0
-      - /dev/serial/by-id/usb-FTDI_TTL232R-3V3_FT9PB4QT-if00-port0
-      - /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A907DVD3-if00-port0
+      #- /dev/serial/by-id/usb-FTDI_TTL232R-3V3_FT9PB4QT-if00-port0
+      #- /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A907DVD3-if00-port0
 
 #  worker-nfs:
 #    build:
@@ -113,6 +132,53 @@ services:
 #      - 2049:2049
 #    volumes:
 #      - worker-http:/var/lib/lava/dispatcher/tmp
+
+
+  squad-rabbitmq:
+    image: rabbitmq
+
+  squad-dbmigrate:
+    # initial setup is based on SQLite
+    # for using PostgreSQL database additional container has to be created
+    <<: *common_env
+    volumes:
+      - squad-home:/home
+      - ./squad/setup.sh:/app/setup.sh
+      - ./squad/create_objects.py:/app/create_objects.py
+    build:
+      context: ./squad
+    command: ./setup.sh
+    deploy:
+      restart_policy:
+        condition: none
+    depends_on:
+      - squad-web
+
+  squad-web:
+    <<: *common_squad_config
+    build:
+      context: ./squad
+    command: squad --fast --bind 0.0.0.0:8000
+    ports:
+      - '8000:8000'
+
+  squad-worker:
+    <<: *common_squad_config
+    build:
+      context: ./squad
+    command: squad-worker
+
+  squad-listener:
+    <<: *common_squad_config
+    build:
+      context: ./squad
+    command: squad-listener
+
+  squad-scheduler:
+    <<: *common_squad_config
+    build:
+      context: ./squad
+    command: squad-scheduler
 
 volumes:
   # postgres data volume
@@ -132,3 +198,6 @@ volumes:
 
   worker-tftp:
     name: worker-tftp
+
+  squad-home:
+    name: squad-home

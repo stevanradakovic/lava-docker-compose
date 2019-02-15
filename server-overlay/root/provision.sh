@@ -4,8 +4,13 @@
 
 set -ex
 
-lava-server manage users list | grep -q admin || \
-    lava-server manage users add --staff --superuser --email admin@example.com --passwd admin admin
+lava-server manage users list | grep -q ${LAVA_ADMIN_USER} || \
+    lava-server manage users add --staff --superuser --email admin@example.com --passwd ${LAVA_ADMIN_PASSWORD} ${LAVA_ADMIN_USER}
+
+lava-server manage users list | grep -q ${LAVA_SQUAD_USER} || \
+    lava-server manage users add --email admin@example.com --passwd ${LAVA_SQUAD_PASSWORD} ${LAVA_SQUAD_USER}
+lava-server manage users list | grep -q ${LAVA_SQUAD_USER} || \
+    lava-server manage tokens add --user ${LAVA_SQUAD_USER} --description "SQUAD token" --secret ${LAVA_SQUAD_TOKEN}
 
 lava-server manage device-types list | grep -q qemu || \
     lava-server manage device-types add qemu

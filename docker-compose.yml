@@ -9,7 +9,7 @@ x-common-env: &common_env
     - LAVA_SQUAD_TOKEN=d0siRzClNHWNtUYJbpmjOPEyPp0QLCKqQtDGTftN
     - SQUAD_ADMIN_USER=admin
     - SQUAD_ADMIN_PASSWORD=admin
-    - SQUAD_CELERY_BROKER_URL=amqp://rabbitmq
+    - SQUAD_CELERY_BROKER_URL=amqp://rabbitmq.squad
     - XDG_DATA_HOME=/home
 
 x-squad-common-config: &common_squad_config
@@ -45,7 +45,7 @@ services:
     build:
       context: ./server-docker
 
-    container_name: lava_server
+    container_name: lava.server
     ports:
       - 8080:80
     volumes:
@@ -136,6 +136,7 @@ services:
 
   squad-rabbitmq:
     image: rabbitmq
+    container_name: rabbitmq.squad
 
   squad-dbmigrate:
     # initial setup is based on SQLite

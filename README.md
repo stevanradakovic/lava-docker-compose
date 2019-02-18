@@ -1,8 +1,9 @@
-# Using LAVA with Docker Compose
+# Using LAVA & SQUAD with Docker Compose
 
 This repository attempts to provide a reference implementation of deploying
-LAVA using its [officially distributed docker
-containers](https://master.lavasoftware.org/static/docs/v2/docker-admin.html#official-lava-software-docker-images).
+LAVA using it's [officially distributed docker
+containers](https://master.lavasoftware.org/static/docs/v2/docker-admin.html#official-lava-software-docker-images)
+and SQUAD using it's containers.
 
 ## Requirements
 
@@ -14,17 +15,40 @@ Install the following.
 
 No configuration should be necessary when running a simple qemu worker.
 
+Note: current master branch contains configuration specific to author's
+personal LAB. This is limited to:
+ - ser2net configuration file
+ - devices connected to ser2net container
+
 ## Usage
 
-`make`: Deploy a pgsql container, lava server container, lava dispatcher
-container, and image host container. A user (username admin, password admin)
+`make`: Deploy following containers:
+ - pgsql
+ - rabbitmq
+ - ser2net
+ - lava server
+ - lava dispatcher
+ - lava dispatcher http server
+ - lava dispatcher tftp server
+ - squad frontend
+ - squad worker
+ - squad listener
+
+A user (username admin, password admin) for lava server
 will automatically be deployed, as well as a qemu device-type and a qemu-01
 device. Its health check should run automatically.
 
-`make clean`: Permanently delete the containers and the pgsql volume.
+SQUAD user 'admin' will be created but it's assigned no password. This is
+due to missing feature in SQUAD. There will be group 'example' and project
+'example' created. LAVA CI backend configured to work with lava server container
+will also be created. All tokens are exchanged automatically during setup.
 
-Once up, go to your http://localhost (port 80) and log in with admin:admin. You
+`make clean`: Permanently delete the containers and volumes.
+
+Once up, go to your http://localhost:8080 and log in with admin:admin. You
 should see qemu-01's health-check running and it should finish successfully.
+SQUAD frontend operate on port 8000 (http://localhost:8000). Port changes are
+required as lava dispatched http server occupies port 80.
 
 ## Upgrades
 
@@ -33,19 +57,22 @@ should see qemu-01's health-check running and it should finish successfully.
 
     sudo tar cvzf lava-server-pgdata-$(date +%Y%m%d).tgz /var/lib/docker/volumes/lava-server-pgdata
 
-3. Change e.g. `lavasoftware/amd64-lava-server:2018.11` to
+3. Back up SQUAD home
+
+    sudo tar cvzf squad-home-$(date +%Y%m%d).tgz /var/lib/docker/volumes/squad-home
+
+4. Change e.g. `lavasoftware/amd64-lava-server:2018.11` to
 `lavasoftware/amd64-lava-server:2019.01` and
 `lavasoftware/amd64-lava-dispatcher:2018.11` to
 `lavasoftware/amd64-lava-dispatcher:2019.01` in docker-compose.yml.
-4. Change the FROM line if any containers are being rebuilt, such as
+5. Change the FROM line if any containers are being rebuilt, such as
 [./server-docker/Dockerfile](./server-docker/Dockerfile)
-5. Start containers.
-
+6. Start containers.
 
 ## Design
 
 The design goal of this repository is to demonstrate how to use the official
-LAVA docker containers in a native way. Ideally, this means without having to
+LAVA and SQUAD docker containers in a native way. Ideally, this means without having to
 rebuild or modify the containers in any way. In the events that the containers
 or their entrypoints do need modifications, patches should be [pushed
 upstream](https://git.lavasoftware.org/lava/pkg/docker) to provide interfaces
@@ -54,7 +81,7 @@ should become more simple.
 
 ### Containers
 
-There are 4 containers defined in [docker-compose.yml](docker-compose.yml):
+There are 13 containers defined in [docker-compose.yml](docker-compose.yml):
 
 #### database
 
@@ -95,6 +122,52 @@ well as device and health-check directories.
 
 The lava dispatcher is run using the official container directly. However, to
 use an actual board container modifications would have to be made in a similar
-way as they were made to lava-server. See the beaglebone-black branch for an
-example implemention of a beaglebone-black.
+way as they were made to lava-server. Example modifications were done in master
+branch
 
+#### worker-webserver
+
+This is official [httpd container](https://hub.docker.com/_/httpd) with modified
+webserver confing. It's used to provide LAVA features like transfer_overlaiy. Container
+can be shared between multiple dispatchers.
+
+#### worker-tftpd
+
+This container launches tftpd-hpa server to provide dispatcher with ability to run
+TFTP boot type jobs. Container can be shared between multiple dispatchers.
+
+#### ser2net
+
+This container runs ser2net providing serial connectivity for dispatcher. Container
+can be shared between multiple dispatchers
+
+#### squad-rabbitmg
+
+Official rabbitmq container providing messaging queue for SQUAD
+
+#### squad-dbmigrate
+
+This container uses SQUAD image to do initial setup:
+ - create/migrate database structure for SQUAD
+ - create SQUAD users
+ - create example group and project
+ - configure LAVA CI backend that connects to previously configured LAVA master
+
+This container doesn't restart once it's job is complete
+
+#### squad-web
+
+SQUAD frontend. Provides web UI for SQUAD
+
+#### squad-worker
+
+This container runs SQUAD Celery worker. All SQUAD background tasks are executed here
+
+#### squad-listener
+
+This container runs SQUAD's "listen" command. It connects to all CI backends that
+provide notification service. In this case it connects to LAVA master ZMQ publisher.
+
+#### squad-scheduler
+
+Scheduler triggers periodic background tasks defined in SQUAD's settings.

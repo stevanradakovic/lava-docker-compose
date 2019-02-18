@@ -14,7 +14,7 @@
 '/usr/local/lab-scripts/eth008_control -a 192.168.0.32 -r 4 -s offon',
 '/usr/local/lab-scripts/snmp_pdu_control --hostname 192.168.0.33 --command reboot --port 1 --delay 20'] %}
 {% set connection_list = ['uart0'] %}
-{% set connection_commands = {'uart0': 'telnet localhost 7003'} %}
+{% set connection_commands = {'uart0': 'telnet ser2net 7003'} %}
 {% set connection_tags = {'uart0': ['primary', 'telnet']} %}
 {% set power_on_command = ['/usr/local/lab-scripts/eth008_control -a 192.168.0.32 -r 4 -s on',
 '/usr/local/lab-scripts/snmp_pdu_control --hostname 192.168.0.33 --command on --port 1'] %}

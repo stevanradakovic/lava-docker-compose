@@ -1,4 +1,4 @@
-device_type: rpi3-b-32
+device_type: bcm2837-rpi-3-b-32
 
 job_name: rpi3-b-32 standard health check
 timeouts:

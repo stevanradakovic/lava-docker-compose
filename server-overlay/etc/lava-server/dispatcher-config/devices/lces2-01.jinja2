@@ -1,7 +1,0 @@
-{% extends 'rzn1.jinja2' %}
-
-{% set power_off_command = '/usr/local/lab-scripts/snmp_pdu_control --hostname 192.168.0.33 --command off --port 3' %}
-{% set hard_reset_command = '/usr/local/lab-scripts/snmp_pdu_control --hostname 192.168.0.33 --command reboot --port 3 --delay 20' %}
-{% set power_on_command = '/usr/local/lab-scripts/snmp_pdu_control --hostname 192.168.0.33 --command off --port 3' %}
-
-{% set connection_command = 'telnet ser2net 7004' %}
